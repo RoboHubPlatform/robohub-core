@@ -1,0 +1,45 @@
+# robohub-core Kconfig
+# The application runtime and the sizes of its tables.
+
+menu "RoboHub Core runtime"
+
+config RH_CORE
+    bool "Application runtime"
+    default n
+    help
+      The application runtime: the inter-module event bus, the cooperative
+      scheduler, the application lifecycle and diagnostics. A program that is
+      more than one module selects it and registers its applications.
+
+config RH_CORE_MAX_SUBSCRIBERS
+    int "Event subscriptions"
+    default 16
+    help
+      How many subscriptions the event bus holds at once.
+
+config RH_CORE_MAX_TASKS
+    int "Periodic tasks"
+    default 8
+    help
+      How many periodic tasks the scheduler holds at once.
+
+config RH_CORE_MAX_APPS
+    int "Applications"
+    default 4
+    help
+      How many applications the lifecycle holds at once.
+
+config RH_CORE_TICK_MS
+    int "Idle tick (ms)"
+    default 10
+    help
+      The longest the loop waits before looking for work again, in
+      milliseconds. A shorter tick is a more responsive idle and more power.
+
+config RH_CORE_TIMER_NAME
+    string "Timer instance"
+    default "system_timer"
+    help
+      The registry name of the timer the runtime takes its clock from.
+
+endmenu
