@@ -1,0 +1,94 @@
+#
+# robohub-core — the RoboHub application runtime.
+#
+# The layer a program is built on when it is more than one thing: an
+# inter-module event bus, a cooperative scheduler, an application lifecycle and
+# diagnostics. It is platform-agnostic and takes its clock from a RoboHubTimer
+# a platform registered, so the same runtime runs on a part or on a host.
+#
+# @project RoboHub Platform
+# @license MIT
+#
+
+module:
+  name: robohub-core
+  type: runtime
+  version: 0.1.0
+  description: >
+    The RoboHub application runtime: an inter-module event bus, a cooperative
+    scheduler, an application lifecycle and diagnostics.
+
+  maintainer: "Aurel Miron"
+  license: "MIT"
+  created: "2026-10-07"
+
+build:
+  language: c
+  standard: c11
+  include_dirs:
+    - include/
+    - include/robohub/
+    - include/robohub/core/
+  sources:
+    - src/core.c
+    - src/event.c
+    - src/scheduler.c
+    - src/app.c
+    - src/diagnostics.c
+
+depends:
+  - name: robohub-common
+    type: c
+    path: /home/miraur/projects/robohub-common
+    git: https://github.com/RoboHubPlatform/robohub-common
+    branch: main
+
+config:
+  dialect: linux
+  kconfig_fragments:
+    - Kconfig
+
+exports:
+  headers:
+    - robohub/core/core.h
+    - robohub/core/event.h
+    - robohub/core/events.h
+    - robohub/core/scheduler.h
+    - robohub/core/app.h
+    - robohub/core/diagnostics.h
+    - robohub/core/config.h
+  cmake:
+    target: "rho::robohub-core"
+    include_dirs:
+      - include
+      - include/robohub/core
+    link_libraries:
+      - rho::robohub-common
+
+tests:
+  enabled: true
+  test_dirs:
+    - tests/
+  test_files:
+    - tests/test_event.c
+    - tests/test_scheduler.c
+    - tests/test_core.c
+
+testing:
+  host_tests:
+    enabled: true
+    target_constraint: "native"
+
+package:
+  kind: library
+  binary: false
+
+metadata:
+  tags:
+    - runtime
+    - event
+    - scheduler
+    - lifecycle
+    - diagnostics
+  stability: experimental
+  visibility: public
