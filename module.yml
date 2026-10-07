@@ -35,6 +35,7 @@ build:
     - src/scheduler.c
     - src/app.c
     - src/diagnostics.c
+    - src/osal_baremetal.c
 
 depends:
   - name: robohub-common
@@ -73,6 +74,7 @@ tests:
     - tests/test_event.c
     - tests/test_scheduler.c
     - tests/test_core.c
+    - tests/test_osal.c
 
 testing:
   host_tests:

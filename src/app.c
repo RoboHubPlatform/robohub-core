@@ -11,6 +11,9 @@
 
 #include "robohub/core/app.h"
 #include "robohub/core/config.h"
+#include "robohub/core/core.h"
+#include "robohub/core/event.h"
+#include "robohub/osal.h"
 #include "core_internal.h"
 
 static const robohub_core_app* apps[RH_CORE_MAX_APPS];
@@ -87,4 +90,42 @@ void robohub_core_app_stop(void)
             apps[i - 1u]->stop();
         }
     }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Threaded mode                                                             */
+/* -------------------------------------------------------------------------- */
+
+/* The runtime's loop, as a thread: publish the tick, step the applications,
+ * sleep the idle tick, until asked to stop — then stop the applications and say
+ * so on the bus, which is the shutdown the cooperative path performs on its way
+ * out of robohub_core_run. */
+static void loop_thread(void* arg)
+{
+    (void)arg;
+    while (robohub_core_running()) {
+        rh_u32 now = robohub_core_uptime_ms();
+        robohub_core_diag_state()->uptime_ms = now;
+        (void)robohub_core_event_publish(RH_EVENT_CORE_TICK, &now, (rh_size)sizeof(now));
+        robohub_core_app_step(now);
+        robohub_osal_sleep_ms(RH_CORE_TICK_MS);
+    }
+    robohub_core_app_stop();
+    (void)robohub_core_event_publish(RH_EVENT_CORE_STOP, 0, 0);
+}
+
+RoboHubError robohub_core_app_start_thread(void)
+{
+    robohub_osal_thread_config config = {
+        .name = "core",
+        .entry = loop_thread,
+        .arg = 0,
+        .stack_size = RH_CORE_MAIN_STACK,
+        .priority = RH_CORE_MAIN_PRIORITY,
+    };
+    robohub_thread_t thread;
+    if (robohub_osal_thread_create(&thread, &config) != 0) {
+        return ROBOHUB_ERR_NO_MEM;
+    }
+    return ROBOHUB_OK;
 }

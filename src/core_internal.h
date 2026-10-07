@@ -30,6 +30,8 @@ RoboHubError robohub_core_scheduler_init(void);
 void robohub_core_scheduler_reset(void);
 void robohub_core_scheduler_run(rh_u32 now_ms);
 rh_u32 robohub_core_scheduler_next_due(rh_u32 now_ms);
+/* With an operating system beneath, each task becomes a thread of its own. */
+RoboHubError robohub_core_scheduler_start_threads(void);
 
 /* Applications. */
 void robohub_core_app_reset(void);
@@ -37,5 +39,8 @@ RoboHubError robohub_core_app_init(void);
 RoboHubError robohub_core_app_start(void);
 void robohub_core_app_step(rh_u32 now_ms);
 void robohub_core_app_stop(void);
+/* With an operating system beneath, one thread publishes the tick and steps the
+ * applications; it is the runtime's own loop, moved off the caller's thread. */
+RoboHubError robohub_core_app_start_thread(void);
 
 #endif /* ROBOHUB_CORE_INTERNAL_H */

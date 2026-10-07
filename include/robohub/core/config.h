@@ -71,6 +71,40 @@ extern "C" {
 #  endif
 #endif
 
+/* What a periodic task is given when the runtime runs it as a thread. The
+ * stack is in bytes; the priority is the kernel's own scale. */
+#ifndef RH_CORE_TASK_STACK
+#  ifdef CONFIG_RH_CORE_TASK_STACK
+#    define RH_CORE_TASK_STACK CONFIG_RH_CORE_TASK_STACK
+#  else
+#    define RH_CORE_TASK_STACK 2048u
+#  endif
+#endif
+#ifndef RH_CORE_TASK_PRIORITY
+#  ifdef CONFIG_RH_CORE_TASK_PRIORITY
+#    define RH_CORE_TASK_PRIORITY CONFIG_RH_CORE_TASK_PRIORITY
+#  else
+#    define RH_CORE_TASK_PRIORITY 1u
+#  endif
+#endif
+
+/* What the runtime's own loop thread is given. It publishes the tick and steps
+ * the applications, so it sits above the tasks it wakes. */
+#ifndef RH_CORE_MAIN_STACK
+#  ifdef CONFIG_RH_CORE_MAIN_STACK
+#    define RH_CORE_MAIN_STACK CONFIG_RH_CORE_MAIN_STACK
+#  else
+#    define RH_CORE_MAIN_STACK 4096u
+#  endif
+#endif
+#ifndef RH_CORE_MAIN_PRIORITY
+#  ifdef CONFIG_RH_CORE_MAIN_PRIORITY
+#    define RH_CORE_MAIN_PRIORITY CONFIG_RH_CORE_MAIN_PRIORITY
+#  else
+#    define RH_CORE_MAIN_PRIORITY 2u
+#  endif
+#endif
+
 #ifdef __cplusplus
 }
 #endif

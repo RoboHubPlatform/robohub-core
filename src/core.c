@@ -14,6 +14,7 @@
 #include "robohub/core/core.h"
 #include "robohub/core/config.h"
 #include "robohub/core/event.h"
+#include "robohub/osal.h"
 #include "registry.h"
 #include "core_internal.h"
 
@@ -69,6 +70,34 @@ RoboHubError robohub_core_run(void)
     }
 
     running = RH_TRUE;
+
+    if (robohub_osal_rtos_present()) {
+        /* With a kernel, the work becomes threads: every periodic task its own,
+         * and one for the loop itself. The kernel is started last, and it does
+         * not return, so this thread is handed over to it. */
+        (void)robohub_core_event_publish(RH_EVENT_CORE_START, 0, 0);
+
+        err = robohub_core_scheduler_start_threads();
+        if (ROBOHUB_FAILED(err)) {
+            running = RH_FALSE;
+            robohub_core_app_stop();
+            return err;
+        }
+        err = robohub_core_app_start_thread();
+        if (ROBOHUB_FAILED(err)) {
+            running = RH_FALSE;
+            return err;
+        }
+
+        robohub_osal_start();
+        /* A kernel that came back from start did not start. Keep this thread
+         * alive rather than falling out of main, which would leave a board
+         * with no program on it. */
+        for (;;) {
+            robohub_osal_sleep_ms(RH_CORE_TICK_MS);
+        }
+    }
+
     (void)robohub_core_event_publish(RH_EVENT_CORE_START, 0, 0);
 
     while (running) {
