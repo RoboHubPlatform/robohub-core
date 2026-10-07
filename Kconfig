@@ -42,4 +42,29 @@ config RH_CORE_TIMER_NAME
     help
       The registry name of the timer the runtime takes its clock from.
 
+config RH_CORE_TASK_STACK
+    int "Task stack (bytes)"
+    default 2048
+    help
+      The stack a periodic task is given when an operating system runs it as a
+      thread.
+
+config RH_CORE_TASK_PRIORITY
+    int "Task priority"
+    default 1
+    help
+      The priority a periodic task's thread is given, on the kernel's own scale.
+
+config RH_CORE_MAIN_STACK
+    int "Loop stack (bytes)"
+    default 4096
+    help
+      The stack the runtime's own loop thread is given, in bytes.
+
+config RH_CORE_MAIN_PRIORITY
+    int "Loop priority"
+    default 2
+    help
+      The priority of the runtime's loop thread, above the tasks it wakes.
+
 endmenu

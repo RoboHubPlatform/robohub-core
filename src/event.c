@@ -6,12 +6,19 @@
  * it read in place, which is what zero-copy means here and why the payload's
  * lifetime is the call.
  *
+ * The table is guarded by a recursive OSAL mutex. It has to be recursive
+ * because a handler runs inside publish, holding the lock, and a handler that
+ * publishes or subscribes would otherwise deadlock against the bus it is
+ * already in. Without an operating system the mutex is the OSAL's no-op, so the
+ * same code costs nothing on bare metal.
+ *
  * @project RoboHub Platform
  * @license MIT
  */
 
 #include "robohub/core/event.h"
 #include "robohub/core/config.h"
+#include "robohub/osal.h"
 #include "core_internal.h"
 
 typedef struct {
@@ -22,9 +29,11 @@ typedef struct {
 } subscription;
 
 static subscription subscriptions[RH_CORE_MAX_SUBSCRIBERS];
+static robohub_mutex_t bus_mutex;
 
 RoboHubError robohub_core_event_init(void)
 {
+    bus_mutex = robohub_osal_mutex_create();
     robohub_core_event_reset();
     return ROBOHUB_OK;
 }
@@ -58,30 +67,36 @@ RoboHubError robohub_core_event_subscribe(robohub_event_id id,
         return ROBOHUB_ERR_INVALID_ARG;
     }
 
+    robohub_osal_mutex_lock(bus_mutex);
+    RoboHubError result = ROBOHUB_ERR_NO_MEM;
+
     /* Subscribing twice is one subscription: a module brought up twice is one
      * module, and being called twice per event would be a bug it did not ask
      * for. */
-    for (rh_u32 i = 0; i < RH_CORE_MAX_SUBSCRIBERS; i++) {
+    for (rh_u32 i = 0; i < RH_CORE_MAX_SUBSCRIBERS && result != ROBOHUB_OK; i++) {
         if (same(&subscriptions[i], id, handler, user)) {
-            return ROBOHUB_OK;
+            result = ROBOHUB_OK;
         }
     }
-    for (rh_u32 i = 0; i < RH_CORE_MAX_SUBSCRIBERS; i++) {
+    for (rh_u32 i = 0; i < RH_CORE_MAX_SUBSCRIBERS && result != ROBOHUB_OK; i++) {
         if (!subscriptions[i].used) {
             subscriptions[i].used = RH_TRUE;
             subscriptions[i].id = id;
             subscriptions[i].handler = handler;
             subscriptions[i].user = user;
-            return ROBOHUB_OK;
+            result = ROBOHUB_OK;
         }
     }
-    return ROBOHUB_ERR_NO_MEM;
+
+    robohub_osal_mutex_unlock(bus_mutex);
+    return result;
 }
 
 RoboHubError robohub_core_event_unsubscribe(robohub_event_id id,
                                             robohub_core_event_handler handler,
                                             void* user)
 {
+    robohub_osal_mutex_lock(bus_mutex);
     for (rh_u32 i = 0; i < RH_CORE_MAX_SUBSCRIBERS; i++) {
         if (same(&subscriptions[i], id, handler, user)) {
             subscriptions[i].used = RH_FALSE;
@@ -89,6 +104,7 @@ RoboHubError robohub_core_event_unsubscribe(robohub_event_id id,
             subscriptions[i].user = 0;
         }
     }
+    robohub_osal_mutex_unlock(bus_mutex);
     return ROBOHUB_OK;
 }
 
@@ -99,6 +115,8 @@ RoboHubError robohub_core_event_publish(robohub_event_id id,
     if (id == RH_EVENT_NONE) {
         return ROBOHUB_ERR_INVALID_ARG;
     }
+
+    robohub_osal_mutex_lock(bus_mutex);
 
     robohub_core_diagnostics* diag = robohub_core_diag_state();
     diag->events_published++;
@@ -119,16 +137,20 @@ RoboHubError robohub_core_event_publish(robohub_event_id id,
             diag->last_error = err;
         }
     }
+
+    robohub_osal_mutex_unlock(bus_mutex);
     return ROBOHUB_OK;
 }
 
 rh_u32 robohub_core_event_subscribers(robohub_event_id id)
 {
+    robohub_osal_mutex_lock(bus_mutex);
     rh_u32 count = 0;
     for (rh_u32 i = 0; i < RH_CORE_MAX_SUBSCRIBERS; i++) {
         if (subscriptions[i].used && subscriptions[i].id == id) {
             count++;
         }
     }
+    robohub_osal_mutex_unlock(bus_mutex);
     return count;
 }

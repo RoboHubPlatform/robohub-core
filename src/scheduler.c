@@ -12,6 +12,8 @@
 
 #include "robohub/core/scheduler.h"
 #include "robohub/core/config.h"
+#include "robohub/core/core.h"
+#include "robohub/osal.h"
 #include "core_internal.h"
 
 typedef struct {
@@ -173,4 +175,48 @@ rh_u32 robohub_core_scheduler_next_due(rh_u32 now_ms)
         }
     }
     return best;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Threaded mode                                                             */
+/* -------------------------------------------------------------------------- */
+
+/* One task as its own thread: run, sleep its period, run again, until the
+ * runtime is asked to stop. Its argument is the slot, which lives in a static
+ * table and so outlives the thread. */
+static void task_thread(void* arg)
+{
+    task_slot* slot = (task_slot*)arg;
+    while (robohub_core_running()) {
+        robohub_core_diagnostics* diag = robohub_core_diag_state();
+        diag->tasks_run++;
+        RoboHubError err = slot->fn(slot->id, slot->user);
+        if (ROBOHUB_FAILED(err)) {
+            diag->task_errors++;
+            diag->last_error = err;
+        }
+        robohub_osal_sleep_ms(slot->period_ms);
+    }
+}
+
+RoboHubError robohub_core_scheduler_start_threads(void)
+{
+    for (rh_u32 i = 0; i < RH_CORE_MAX_TASKS; i++) {
+        task_slot* slot = &tasks[i];
+        if (!slot->used) {
+            continue;
+        }
+        robohub_osal_thread_config config = {
+            .name = slot->name != 0 ? slot->name : "task",
+            .entry = task_thread,
+            .arg = slot,
+            .stack_size = RH_CORE_TASK_STACK,
+            .priority = RH_CORE_TASK_PRIORITY,
+        };
+        robohub_thread_t thread;
+        if (robohub_osal_thread_create(&thread, &config) != 0) {
+            return ROBOHUB_ERR_NO_MEM;
+        }
+    }
+    return ROBOHUB_OK;
 }
