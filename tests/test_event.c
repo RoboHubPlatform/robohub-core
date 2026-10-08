@@ -14,6 +14,14 @@
 
 static int calls;
 static rh_f32 seen;
+static rh_u16 seen_tx;
+
+static RoboHubError on_transaction(robohub_event_id id, const void* payload, rh_size size, void* user)
+{
+    (void)id; (void)payload; (void)size; (void)user;
+    seen_tx = robohub_core_event_current_tx();
+    return ROBOHUB_OK;
+}
 
 static RoboHubError on_temperature(robohub_event_id id, const void* payload, rh_size size, void* user)
 {
@@ -96,6 +104,14 @@ int main(void)
     assert(snapshot.events_published == 1);
     assert(snapshot.event_deliveries == 1);
     assert(snapshot.handler_errors == 1);
+
+    /* A transaction id belongs to the dispatch: a handler sees it while it
+     * runs, and it is gone when it returns. */
+    robohub_core_event_reset();
+    assert(robohub_core_event_subscribe(pressure, on_transaction, 0) == ROBOHUB_OK);
+    assert(robohub_core_event_publish_with_tx(pressure, 7u, 0, 0) == ROBOHUB_OK);
+    assert(seen_tx == 7u);
+    assert(robohub_core_event_current_tx() == 0u);
 
     return 0;
 }

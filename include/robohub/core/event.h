@@ -92,6 +92,22 @@ RoboHubError robohub_core_event_publish(robohub_event_id id,
                                         const void* payload,
                                         rh_size size);
 
+/**
+ * @brief Publish an event that belongs to a transaction.
+ *
+ * The same as `robohub_core_event_publish`, with a correlation id carried
+ * alongside. Telemetry publishes with 0; a request and its response share an id
+ * so a caller can tell its answer from another's. A handler reads it with
+ * `robohub_core_event_current_tx` while it runs.
+ */
+RoboHubError robohub_core_event_publish_with_tx(robohub_event_id id,
+                                                rh_u16 tx_id,
+                                                const void* payload,
+                                                rh_size size);
+
+/** The transaction id of the event being dispatched, or 0 outside a dispatch. */
+rh_u16 robohub_core_event_current_tx(void);
+
 /** How many handlers are subscribed to an event. */
 rh_u32 robohub_core_event_subscribers(robohub_event_id id);
 
