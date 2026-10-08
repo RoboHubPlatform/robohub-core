@@ -30,6 +30,7 @@ typedef struct {
 
 static subscription subscriptions[RH_CORE_MAX_SUBSCRIBERS];
 static robohub_mutex_t bus_mutex;
+static rh_u16 current_tx;
 
 RoboHubError robohub_core_event_init(void)
 {
@@ -112,6 +113,14 @@ RoboHubError robohub_core_event_publish(robohub_event_id id,
                                         const void* payload,
                                         rh_size size)
 {
+    return robohub_core_event_publish_with_tx(id, 0u, payload, size);
+}
+
+RoboHubError robohub_core_event_publish_with_tx(robohub_event_id id,
+                                                rh_u16 tx_id,
+                                                const void* payload,
+                                                rh_size size)
+{
     if (id == RH_EVENT_NONE) {
         return ROBOHUB_ERR_INVALID_ARG;
     }
@@ -120,6 +129,12 @@ RoboHubError robohub_core_event_publish(robohub_event_id id,
 
     robohub_core_diagnostics* diag = robohub_core_diag_state();
     diag->events_published++;
+
+    /* The transaction id belongs to the dispatch, not to the bus: a handler
+     * that publishes in turn gets its own, and gets this one back when it
+     * returns. */
+    rh_u16 previous_tx = current_tx;
+    current_tx = tx_id;
 
     for (rh_u32 i = 0; i < RH_CORE_MAX_SUBSCRIBERS; i++) {
         subscription* slot = &subscriptions[i];
@@ -138,8 +153,14 @@ RoboHubError robohub_core_event_publish(robohub_event_id id,
         }
     }
 
+    current_tx = previous_tx;
     robohub_osal_mutex_unlock(bus_mutex);
     return ROBOHUB_OK;
+}
+
+rh_u16 robohub_core_event_current_tx(void)
+{
+    return current_tx;
 }
 
 rh_u32 robohub_core_event_subscribers(robohub_event_id id)
