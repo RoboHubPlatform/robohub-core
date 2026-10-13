@@ -75,6 +75,7 @@ tests:
     - tests/test_scheduler.c
     - tests/test_core.c
     - tests/test_osal.c
+    - tests/test_diagnostics.c
 
 testing:
   host_tests:

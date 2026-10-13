@@ -91,7 +91,7 @@ target_compile_features(robohub-core PUBLIC c_std_11)
 if(PROJECT_IS_TOP_LEVEL AND RHO_BUILD_HOST_TESTS AND NOT RHO_TARGET_IS_BAREMETAL)
   message(STATUS "[robohub-core] registering host unit tests")
   enable_testing()
-  foreach(name event scheduler core osal)
+  foreach(name event scheduler core osal diagnostics)
     add_executable(robohub-core-test-${name} tests/test_${name}.c)
     target_link_libraries(robohub-core-test-${name} PRIVATE robohub-core)
     target_include_directories(robohub-core-test-${name} PRIVATE
