@@ -95,3 +95,11 @@ metadata:
     - diagnostics
   stability: experimental
   visibility: public
+
+docs:
+  title: robohub-core
+  section: modules
+  order: "10"
+  index: docs/index.md
+  sources:
+    - docs/index.md
