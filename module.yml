@@ -12,7 +12,9 @@
 
 module:
   name: robohub-core
-  id: robohub-core
+  id: robohub.runtime.core
+  previous_ids:
+    - robohub-core
   type: runtime
   version: 0.1.0
   description: >
